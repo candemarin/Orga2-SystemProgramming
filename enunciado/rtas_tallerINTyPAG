@@ -1,0 +1,69 @@
+a) IDT_ENTRY0 corresponde a cada entrada de la IDT de nivel 0 ¿A qué se refiere cada campo? 
+¿Qué valores toma el campo offset? Observen que los atributos son los bits 15 a 5 de la palabra de 32 bits superior.
+
+.offset = dirección de memoria donde comienza la rutina de atención de interrupcion.
+.segsel = indica qué selector de segmento debe utilizarse al ejecutar el código de la rutina.
+.type = tipo especı́fico de la compuerta de interrupción, el bit D indica si es una compuerta de 32 o 16 bits.
+.dpl =  nivel de privilegio de la rutina.                                                       
+.present = si esta la rutina presente en la memoria.
+
+Los valores de offset corresponden al numero de interrupcion a atender.
+
+7. ¿Qué oficiaría de prólogo y epílogo de estas rutinas? 
+¿Qué marca el iret y por qué no usamos ret?
+
+prologo: pushad
+epilogo: popad
+   	 iret
+   	 
+iret marca el rertorno de una interrupcon y saca más cosas de la pila.
+
+PAG. a) ¿Cuántos niveles de privilegio podemos definir en las estructuras de paginación?
+
+2 niveles: 0 para kernel, 1 para user.
+
+b) ¿Cómo se traduce una dirección lógica en una dirección fı́sica? 
+¿Cómo participan la dirección lógica, el registro de control CR3, el directorio y la tabla de páginas?
+
+primero se traduce de logica a lineal (virtual) usando el segment selector para encontrar el segment descriptor en la GDT. Sumamos el offset de la dire logica a la direccion base obtenida y obtenemos la dire lineal. Los 10 bits mas significativos de ella se usan como index de directory page table (DPT obtenido por los 10 bits mas significativos del CR3) accediendo al page directoty entry (PDE) que contiene los 20 bits mas signicativos de la direccion fisica de la pagina que contiene la page table (PT o page frame) esta table contiene el descriptor de la pagina de memoria direccionada en la MMU del procesador. 
+Luego los siguientes 10 bits de la dire lineal se usan como indice en la PT para obtener el descriptor de la pagina de memoria direccionada (PTE page table entry) con esto obtenemos los 20 bits mas significativos de la direccion fisica en la que comienza la pagina direccionada y para finalizar le agregamos los 12 bits menos signicativos de la dire lineal.
+
+c) ¿Cuál es el efecto de los siguientes atributos en las entradas de la tabla de página?
+
+D => dirty, la unidad de memoria del procesador lo activa al escribir la pagina
+A => accessed, lo mismo pero al escribir o leer.
+PCD => cache disable, hace que la memoria no se almacene el cache, desabilita el cache poniendo en falso el bit de ¨presente¨
+PWT => write trough, activa que al escribir se refleje en cache y memoria
+U/S => user/supervisor
+R/W => read/write
+P => indica si se entuentra en memoria
+
+d) ¿Qué sucede si los atributos U/S y R/W del directorio y de la tabla de páginas difieren? 
+¿Cuáles terminan siendo los atributos de una página determinada en ese caso?
+
+Si alguno de los dos tiene permisos de supervisor este es el que prevalece y además al ser modo supervisor autoriza la escritura/lectura inherentemente. Si difiere R/W y es S queda W y si es U, R.
+
+e) Suponiendo que el código de la tarea ocupa dos páginas y utilizaremos una página para la pila de la tarea. 
+¿Cuántas páginas hace falta pedir a la unidad de manejo de memoria para el directorio, tablas de páginas y la memoria de una tarea?
+
+5 páginas: 2 para el código, 1 para la pila, 1 para el directorio y 1 la tabla de páginas
+
+g) ¿Qué es el buffer auxiliar de traducción (translation lookaside buffer o TLB) y por qué es necesario purgarlo (tlbflush)
+al introducir modificaciones a nuestras estructuras de paginación (directorio, tabla de páginas)? 
+¿Qué atributos posee cada traducción en la TLB? 
+Al desalojar una entrada determinada de la TLB ¿Se ve afectada la homóloga en la tabla original para algún caso?
+
+Almacena las ultimas traducciones realizadas para no tener que volver a computarlas.
+Cuando realicemos un cambio en nuestras estructuras de paginacion es necesario forzar una limpieza del mismo para evitar
+que las direcciones pre-computadas que ya no son validas se sigan empleando, para esto realizamos un intercambio del registro CR3
+con un valor temporal y luego lo restauramos. 
+Atributos: directorio de tabla, direccion fisica y bits de control.
+
+ckp 3.
+
+b) ¿por qué es necesario mapear y desmapear las páginas de destino y fuente? 
+¿Qué función cumplen SRC VIRT PAGE y DST VIRT PAGE? ¿Por qué es necesario obtener el CR3 con rcr3()?
+
+Es necesario mapear y desmapear las páginas físicas para no afectar la visión de memoria del proceso que está llamando a esta función. Usamos la función rcr3() para acceder a las 20 bits más altos de cr3 que precisamos para saber donde esta el directorio de paginas.SRC_VIRT_PAGE y DST_VIRT_PAGE se utilizan para mapear ambas páginas a las direcciones, realiza la copia y luego desmapea las páginas. Sirve la función de intermediario.
+
+

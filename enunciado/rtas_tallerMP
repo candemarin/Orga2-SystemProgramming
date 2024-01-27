@@ -1,0 +1,69 @@
+1. ¿A qué nos referimos con modo real y con modo protegido en un procesador Intel? ¿Qué particularidades tiene cada modo?
+
+• Protected mode — This is the native operating mode of the processor. It provides a rich set of architectural
+features, flexibility, high performance and backward compatibility to existing software base. Puede acceder max a 4GB de memoria.
+Tiene 4 niveles de proteccion.
+
+• Real-address mode — This operating mode provides the programming environment of the Intel 8086
+processor, with a few extensions (such as the ability to switch to protected or system management mode). Puede acceder max a 1MB de memoria.
+No tiene proteccion de memoria
+
+2. ¿Por qué debemos hacer el pasaje de modo real a modo protegido? ¿No podríamos simplemente tener un sistema operativo en modo real? ¿Qué desventajas tendría?
+
+Pricipalmente xq modo real no tiene proteccion de memoria por lo que se podria acceder a cualquier parte de la memoria y modificarla ademas
+solo se podria trabajar con 1 MB de memoria y no tendriamos demasiadas instrucciones a disponibles
+
+3. ¿Qué es la GDT? ¿Cómo es el formato de un descriptor de segmento, bit a bit? 
+Para qué sirven los campos Limit, Base, G, P, DPL, S?
+
+a GDT (global descriptor table) or LDT provides the processor with the size and location of a segment, as well as access control and status information. Segment descriptors are typically created by compilers, linkers, loaders, or the operating system or executive, but not application programs.
+
+Limit: maximo offset que puede tener un byte direccionable dentro del segmento. 
+Es el tamano del segmento menos 1, ya que el offset del primer byte del segmento es 0.
+
+Base: direccion a partir de la cual se despliega en forma continua el segmento.
+
+G: Granularity. Establece la unidad de medida del campo Lımite.
+Si G = 0, el maximo offset de un byte es igual a Lımite. 
+Si G = 1, el maximo offset es igual a Lımite * 0x1000 +0xFFF.
+
+P: Present. Cuando es ’1’ el segmento correspondiente esta presente en la memoria RAM. Si es ’0’, el segmento esta en la memoria virtual (disco). Un acceso a un segmento cuyo bit P esta en ’0’, genera una excepcion #NP (Segmento No Presente). 
+Esto permite al kernel solucionar el problema, efectuando el “swap” entre el disco a memoria para ponerlo accesiible en RAM.
+
+DPL: Descriptor Priviledge Level. Nivel de privilegio que debe tener el segmento que contiene el codigo que pretende acceder a este segmento.
+
+S: System. Este bit, activo bajo permite administrar en las tablas de descriptores, dos clases bien determinadas de segmentos:
+Segmentos de Codigo o Datos o Segmentos de Sistema.
+
+4. Type, los bits 11, 10, 9, 8. 
+¿Qué combinación de bits tendríamos que usar si queremos especificar un segmento para ejecución y lectura de código?
+
+1010
+
+5. Completar GDTs
+
+https://docs.google.com/spreadsheets/d/1f-0USc_Gk8gZqYBSnfr30LpMsbYdSYo0/edit#gid=1046656315
+
+6. En el archivo gdt.h observen las estructuras: struct gdt_descriptor_t y el struct gdt_entry_t.
+¿Qué creen que contiene la variable extern gdt_entry_t gdt[]; y extern gdt_descriptor_t GDT_DESC; ?
+
+extern gdt_entry_t gdt[]; Contiene todos los descriptores de la gdt. 
+extern gdt_descriptor_t GDT_DESC; Contiene la longitud de la gdt y la dirección base
+
+10. Qué hace la instrucción LGDT? En el código, ¿qué estructura indica donde está almacenada la dirección desde la
+cual se carga la GDT y su tamaño? ¿dónde se inicializa en el código?
+
+Load Global Descriptor Table es una instrucción para cargar la dirección base y el tamaño de la Global Descriptor Table (GDT).
+Se le proporciona una dirección de memoria que apunta a una estructura de datos que contiene la dirección base y el tamaño de la GDT y los carga en el registro de control GDTR (Global Descriptor Table Register).
+La estructura que indica dond esta almacenada la direcccion desde la cual se cargar la GDT y su tamanio es la gdt_descriptor_t.
+
+13. ¿Deberíamos modificar el registro CR0 para pasar a modo protegido?
+
+Si. Prender el bit 0 'PE'
+
+21. ¿Qué creen que hace el método screen_draw_box? ¿Cómo hace para acceder a la pantalla? 
+¿Qué estructura usa para representar cada carácter de la pantalla y cuanto ocupa en memoria?
+
+screen_draw_box dibuja un rectangulo hecho con un caracter dado y ciertos atributos dados.
+Usa un puntero p que apunta al inicio de la memoria de video y se usa para acceder a la pantalla.
+Para cada caracter usa la estructura 'ca' que ocupa 2 bytes. 1 byte para el carater y otro para sus atributos.

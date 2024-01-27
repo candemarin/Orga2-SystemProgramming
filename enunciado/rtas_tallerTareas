@@ -1,0 +1,79 @@
+1. Si queremos definir un sistema que utilice sólo dos tareas, ¿Qué nuevas estructuras, cantidad de
+nuevas entradas en las estructuras ya definidas, y registros tenemos que configurar?¿Qué formato
+tienen? ¿Dónde se encuentran almacenadas?
+
+Estructuras: 2 TSS con registros de la CPU y los selectores de segmento almacenados en TR (task register) necesarios para cambiar de contexto entre las tareas, ademas de los de tarea inicial y tarea idle.
+
+Configurar dos nuevas Page Directories y asignar las direcciones bases correspondientes en los registros CR3 de las tareas.
+
+Nuevas entradas: Al menos 2 en la gdt para los descriptores de tss de cada tarea.
+
+Directorios, tablas y pilas de nivel 0 se almacenan en el area libre de kernel en la memoria. Y datos de las tareas, stack de las mismas y memoria compartida bajo demanda en el area libre de tareas.
+
+ 
+2. ¿A qué llamamos cambio de contexto?¿Cuándo se produce?¿Qué efecto tiene sobre los registros del procesador? 
+Expliquen en sus palabras que almacena el registro TR y cómo obtiene la información necesaria para ejecutar una tarea 
+después de un cambio de contexto.
+
+Cambio de contexto es el cambio de una tarea a otra con sus respectivos estados. Se produce cuando el scheduler lo indica en cada tic de reloj. Se guarda el estados en su TSS antes de cada cambio de contexto. 
+El registro TR tiene el selector de segmento de la tarea que apunta a su TSS de la cual se obtiene la info necesaria para ejecutar una tarea. El registro TR tiene el índice de segmento de la TSS en la GDT (Global Descriptor Table).
+
+
+3. Al momento de realizar un cambio de contexto el procesador va almacenar el estado actual de acuerdo al selector indicado en el registro TR y ha de restaurar aquel almacenado en la TSS cuyo selector se asigna en el jmp far. 
+¿Qué consideraciones deberíamos tener para poder realizar el primer cambio de contexto? 
+¿Y cuáles cuando no tenemos tareas que ejecutar o se encuentran todas suspendidas?
+
+Para el 1er cambio de contexto debemos tener una tarea inicial y pasar a una tarea idle cuando no hay tareas/estan supendidas.
+Siempre cambia de tareas en nivel de privilegio 0 (Kernel) y siempre tiene que estar ejecutando una tarea.
+
+
+4. ¿Qué hace el scheduler de un Sistema Operativo? ¿A qué nos referimos con que usa una política?
+
+El scheduler es el encargado de decidir que tarea ejecutar en cada tic de reloj. Decimos que usa una politica porque este tiene un criterio o estrategia para administras las tareas y darle ciertas prioridades a algunas.
+
+
+5. En un sistema de una única CPU, ¿cómo se hace para que los programas parezcan ejecutarse en
+simultáneo?
+
+Se despacha, ejecuta y suspende cada tarea intermetenmente a gran velocidad dando la sensacion de simultaneidad, se producen cientos o miles context switchs por segundo.
+
+9. ¿Por qué hace falta tener definida la pila de nivel 0 en la tss?
+
+Para almacenar los registros y las estructuras de datos relevantes. el campo ESP0 de la TSS, se utiliza para definir la pila a nivel 0 que se usará cuando el procesador cambie de contexto a un nivel de privilegio 0, como cuando se produce una interrupción o se ejecuta una rutina del kernel.
+
+11. a) Expliquen con sus palabras que se estaría ejecutando en cada tic del reloj línea por línea.
+
+_isr32:
+pushad					; se pushean todos los gpr a la pila
+call pic_finish1			; finaliza la interrupción del controlador de interrupciones programable (PIC)
+call sched_next_task			; pide el selector de segmento  de la siguiente tarea
+str cx					; lee el reg TR actual y lo guarda en cx
+cmp ax, cx				; compara lo del reg TR con la sig tarea guardada en ax
+je .fin					; si son iguales no hay cambio de contexto
+mov word [sched_task_selector], ax	; guarda el selector de la sig tarea
+jmp far [sched_task_offset]		; gran salto a la dirección de la tarea, cambiando de tarea y haciendo cambio de contexto.
+.fin:					; etiqueta
+popad					; restauro los gpr de la pila
+iret					; retorno a la rutina que fue interrumpida restaurando el EIP
+
+
+b) jmp far [sched_task_offset] ¿De que tamaño es el dato que estaría leyendo desde la memoria? 
+¿Qué indica cada uno de estos valores? ¿Tiene algún efecto el offset elegido?
+
+Se leen 48 bits. sched_task_offset es el puntero al inicio del selector (2 bytes) y el offset (4 bytes).
+
+c) ¿A dónde regresa la ejecución (eip) de una tarea cuando vuelve a ser puesta en ejecución?
+
+Cuando una tarea vuelve a ser puesta en ejecución regresa al punto en el que la tarea fue suspendida anteriormente. Esto implica que el valor del registro de instrucción (EIP) se restaura al valor que tenía cuando la tarea fue suspendida o se le dio paso a otra tarea. Usando lo guardo en su TSS.
+
+12. a) En sched.c y sched.h se encuentran definidos métodos para el Scheduler. Expliquen cómo funciona el mismo, es decir, cómo decide cuál es la próxima tarea a ejecutar (sched_next_task).
+
+Busca la proxima tarea viva desde la tarea actual, con un for que se ejecuta hasta la cantidad de tareas maximas, si encuentra una tarea termina. Luego se acomoda el i para el nuevo valor y se chequea si tiene tarea disponible, si tiene se acomoda el current_task y se ejecuta. En el peor de los casos ejecuta la tarea idle.
+
+14. a) en create_task ¿Qué está haciendo la función tss_gdt_entry_for_task?
+
+Define la correspondiente entrada de la gdt para la tss.
+
+b) ¿Por qué motivo se realiza el desplazamiento a izquierda de gdt_id al pasarlo como parámetro de sched_add_task?
+
+Para deshacernos del RPL y el TI y quedarnos solo con el indice del selector segmento.
